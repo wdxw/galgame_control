@@ -1,0 +1,29 @@
+appId: com.galcontroller.app
+productName: Gal Controller
+directories:
+  buildResources: resources
+  output: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.*'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.gitignore}'
+  - '!dist/*'
+  - '!scripts/*'
+  - '!*.exe'
+asar: true
+win:
+  executableName: GalController
+  target:
+    - nsis
+  sign: null
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+npmRebuild: true
