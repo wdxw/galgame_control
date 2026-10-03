@@ -1,0 +1,23 @@
+.background-music { position: relative; z-index: 35; flex: none; display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 8px 20px; border-top: 1px solid rgb(var(--accent) / .18); background: rgb(var(--surface-200)); color: rgb(var(--text-primary)); }
+.background-music[hidden] { display: none; }
+.background-music-icon { flex: none; color: rgb(var(--accent)); }
+.background-music-title { min-width: 0; max-width: min(560px, 55vw); display: flex; flex-direction: column; align-items: flex-start; text-align: left; border: 0; background: none; color: inherit; cursor: pointer; }
+.background-music-title strong, .background-music-title small { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.background-music-title strong { font-size: 12px; font-weight: 600; }
+.background-music-title small { font-size: 10px; opacity: .65; }
+.background-music-policy { margin-left: auto; font-size: 10px; opacity: .65; }
+.background-music-button { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 30px; height: 30px; border: 0; border-radius: 9px; background: transparent; color: inherit; cursor: pointer; }
+.background-music-button:hover { background: rgb(var(--accent) / .13); }
+.background-music-controls { position: absolute; right: 18px; bottom: calc(100% + 8px); width: min(350px, calc(100vw - 36px)); max-height: calc(100vh - 120px); overflow-y: auto; padding: 12px; border: 1px solid rgb(var(--accent) / .2); border-radius: 14px; background: rgb(var(--surface-200)); color: inherit; box-shadow: 0 8px 30px #0003; visibility: hidden; pointer-events: none; }
+.background-music-controls.is-expanded { visibility: visible; pointer-events: auto; }
+.background-music-controls-title { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; font-size: 12px; }
+.background-music-controls-title strong { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.background-music-controls-title button { display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: inherit; padding: 3px; cursor: pointer; }
+.background-music-controls audio { width: 100%; height: 32px; }
+.background-music-controls audio[hidden] { display: none; }
+.background-music-embed { border: 0; width: 100%; height: 90px; background: #fff; border-radius: 9px; }
+.background-music-embed.is-album { height: min(330px, 44vh); }
+.background-music-controls a { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; color: rgb(var(--accent)); font-size: 10px; }
+.background-music-controls p { margin-top: 6px; font-size: 10px; line-height: 1.5; opacity: .7; }
+body:is([data-theme="dark"], [data-theme="darker"], [data-theme="pink"]) .background-music { color: #eeeaf1; }
+@media (max-width: 1000px) { .background-music-policy { visibility: hidden; font-size: 0; } }

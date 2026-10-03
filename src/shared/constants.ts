@@ -66,6 +66,10 @@ export const IPC_CHANNELS = {
   // Cover
   FIND_LOCAL_COVERS: 'cover:findLocal',
   SEARCH_VNDB: 'cover:searchVndb',
+  GET_WORLD_METADATA: 'world:metadata',
+  GET_WORLD_MUSIC: 'world:music',
+  GET_WORLD_MUSIC_ALBUM: 'world:musicAlbum',
+  SEARCH_NETEASE_MUSIC: 'world:neteaseMusic',
   DOWNLOAD_VNDB_COVER: 'cover:downloadVndb',
   EXTRACT_EXE_ICON: 'cover:extractIcon',
   COPY_COVER_FILE: 'cover:copyCover',
@@ -82,8 +86,30 @@ export const IPC_CHANNELS = {
   GET_SETTINGS: 'settings:get',
   UPDATE_SETTINGS: 'settings:update',
 
+  // World
+  GET_WORLD: 'world:get',
+  GET_HUB_WORLD: 'world:hub',
+  SAVE_WORLD: 'world:save',
+  ANALYZE_WORLD: 'world:analyze',
+  ANALYZE_WORLD_QUEUE: 'world:analyzeQueue',
+  MIGRATE_WORLD_PROPS: 'world:migrateLegacy',
+  AI_STATUS: 'ai:status',
+  AI_SAVE: 'ai:save',
+  AI_TEST: 'ai:test',
+
+  // Ratings
+  SAVE_MANUAL_RATING: 'ratings:saveManual',
+  CLEAR_MANUAL_RATING: 'ratings:clearManual',
+  GET_GAME_RATING: 'ratings:get',
+  SEARCH_RATING_CANDIDATES: 'ratings:search',
+  SELECT_RATING_CANDIDATE: 'ratings:select',
+  OPEN_RATING_SOURCE: 'ratings:open',
+
   // Window
   WINDOW_MINIMIZE: 'window:minimize',
   WINDOW_MAXIMIZE: 'window:maximize',
   WINDOW_CLOSE: 'window:close'
 } as const
+
+/** The shared island is not a library entry, so it is addressed by a fixed id. */
+export const HUB_WORLD_ID = '__hub__'

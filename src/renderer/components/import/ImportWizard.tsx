@@ -6,11 +6,20 @@ import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../i18n/useTranslation'
 import { ScanProgress } from './ScanProgress'
 import { ScanResults } from './ScanResults'
-import type { Game } from '../../../shared/types'
+import type { Game, VndbSearchResult } from '../../../shared/types'
+
+const normalizeTitle = (value: string) => value.normalize('NFKC').toLocaleLowerCase().replace(/[\p{P}\p{S}\s]/gu, '')
+
+function exactVndbMatch(name: string, results: VndbSearchResult[]): VndbSearchResult | null {
+  const needle = normalizeTitle(name)
+  if (!needle) return null
+  return results.find(result => [result.title, result.originalTitle, ...result.aliases]
+    .some(alias => alias && normalizeTitle(alias) === needle)) || null
+}
 
 export function ImportWizard() {
   const { phase, progress, candidates, selectedIds, reset, cancelScan } = useScanStore()
-  const { addGame } = useGameStore()
+  const { addGame, updateGame } = useGameStore()
   const { addToast } = useUIStore()
   const [importing, setImporting] = useState(false)
   const { t } = useTranslation()
@@ -24,6 +33,7 @@ export function ImportWizard() {
     setImporting(true)
     let imported = 0
     let failed = 0
+    const vndbEnabled = (await window.api.getSettings().catch(() => null))?.vndbEnabled ?? false
 
     for (const candidate of candidates) {
       if (!selectedIds.has(candidate.folderPath)) continue
@@ -69,6 +79,7 @@ export function ImportWizard() {
           coverPath,
           coverSource,
           vndbId: null,
+          bangumiId: null,
           developer: null,
           description: null,
           releaseDate: null,
@@ -82,6 +93,23 @@ export function ImportWizard() {
 
         await addGame(game)
         imported++
+        if (vndbEnabled) {
+          try {
+            const match = exactVndbMatch(candidate.folderName, await window.api.searchVndb(candidate.folderName))
+            if (match) {
+              await updateGame(game.id, {
+                vndbId: match.id,
+                worldTags: match.tags,
+                originalTitle: match.originalTitle,
+                developer: match.developer,
+                description: match.description,
+                releaseDate: match.releaseDate
+              })
+            }
+          } catch (error) {
+            console.warn('[ImportWizard] VNDB matching failed:', error)
+          }
+        }
       } catch (err) {
         failed++
         console.error(`[ImportWizard] Failed to import ${candidate.folderName}:`, err)

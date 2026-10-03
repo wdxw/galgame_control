@@ -62,6 +62,18 @@ body[data-theme="anime"] {
   --text-primary: 73 42 61;
 }
 
+body[data-theme="soft-pink"] {
+  --app-bg: 255 244 248;
+  --surface-50: 255 252 254;
+  --surface-100: 255 248 252;
+  --surface-200: 255 243 249;
+  --surface-300: 255 239 246;
+  --surface-400: 91 51 72;
+  --accent: 181 66 110;
+  --accent-secondary: 167 113 151;
+  --text-primary: 83 47 66;
+}
+
 /* ---- Base ---- */
 * {
   margin: 0;
@@ -189,26 +201,103 @@ body[data-theme="anime"] textarea::placeholder {
   color: rgb(157 111 135);
 }
 
-.detail-cover-backdrop {
-  --detail-cover-opacity: 0.3;
-  opacity: var(--detail-cover-opacity);
-  transform: scale(1.06);
-  animation: coverBackdropIn 420ms ease-out both;
+/* ---- Sheer pink glass surfaces ---- */
+body[data-theme="soft-pink"] {
+  color-scheme: light;
+  background:
+    radial-gradient(ellipse at 12% 16%, rgb(247 185 210 / 0.52), transparent 48%),
+    radial-gradient(ellipse at 88% 82%, rgb(222 207 243 / 0.48), transparent 52%),
+    linear-gradient(135deg, #fff8fb, #ffedf5 55%, #faf3ff);
 }
 
-body[data-theme="anime"] .detail-cover-backdrop {
-  --detail-cover-opacity: 0.42;
-  filter: blur(2rem) saturate(1.12);
+body[data-theme="soft-pink"] .app-content {
+  background: rgb(var(--surface-300) / 0.18);
+}
+
+body[data-theme="soft-pink"] :is(.app-titlebar, .app-sidebar) {
+  background: rgb(var(--surface-200) / 0.48);
+  border-color: rgb(var(--accent) / 0.14);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72);
+}
+
+body[data-theme="soft-pink"] :is(.game-card, .detail-panel, .modal-panel) {
+  background: rgb(var(--surface-200) / 0.68);
+  border-color: rgb(var(--accent) / 0.18);
+  backdrop-filter: blur(24px) saturate(1.08);
+  box-shadow: 0 12px 36px rgb(121 61 88 / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+body[data-theme="soft-pink"] .game-card:hover {
+  border-color: rgb(var(--accent) / 0.4);
+  box-shadow: 0 16px 40px rgb(121 61 88 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+body[data-theme="soft-pink"] :is([class~="text-white"], [class~="text-white/90"],
+  [class~="text-white/80"], [class~="text-white/70"], [class~="text-gray-300"]) {
+  color: rgb(var(--text-primary));
+}
+
+body[data-theme="soft-pink"] :is([class~="text-gray-400"], [class~="text-gray-500"]) {
+  color: rgb(120 74 96);
+}
+
+body[data-theme="soft-pink"] [class~="text-gray-600"] {
+  color: rgb(140 89 112);
+}
+
+body[data-theme="soft-pink"] :is(input, textarea, select) {
+  color: rgb(var(--text-primary));
+  border-color: rgb(var(--accent) / 0.2);
+}
+
+body[data-theme="soft-pink"] :is(input, textarea)::placeholder {
+  color: rgb(140 89 112);
+}
+
+body[data-theme="soft-pink"] option {
+  background: rgb(var(--surface-200));
+  color: rgb(var(--text-primary));
+}
+
+/* Icons and labels sitting directly on dark cover overlays stay light. */
+body[data-theme="soft-pink"] [class*="bg-surface-400"]:is(button, [role="button"]),
+body[data-theme="soft-pink"] button[class*="bg-surface-400"] [class~="text-white"] {
+  color: rgb(255 248 252);
+}
+
+body[data-theme="soft-pink"] ::-webkit-scrollbar-thumb {
+  background: rgb(var(--accent) / 0.26);
+}
+
+body[data-theme="soft-pink"] ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--accent) / 0.46);
+}
+
+.detail-cover-stage {
+  right: min(440px, 100vw);
+  padding: clamp(16px, 2.5vw, 40px);
+  overflow: hidden;
+}
+
+.detail-cover-backdrop {
+  --detail-cover-opacity: 0.35;
+  opacity: var(--detail-cover-opacity);
+  filter: blur(24px);
+  animation: coverBackdropIn 420ms ease-out both;
 }
 
 @keyframes coverBackdropIn {
   0% {
     opacity: 0;
-    transform: scale(1.12);
   }
   100% {
     opacity: var(--detail-cover-opacity);
-    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-cover-backdrop {
+    animation: none;
   }
 }
 

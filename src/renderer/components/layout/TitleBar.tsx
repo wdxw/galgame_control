@@ -5,7 +5,7 @@ export function TitleBar() {
   const { t } = useTranslation()
 
   return (
-    <div className="h-10 bg-surface-200/90 border-b border-surface-100/20 backdrop-blur-xl flex items-center justify-between titlebar-drag select-none shrink-0">
+    <div className="app-titlebar relative z-50 h-10 bg-surface-200/90 border-b border-surface-100/20 backdrop-blur-xl flex items-center justify-between titlebar-drag select-none shrink-0">
       {/* App title */}
       <div className="flex items-center gap-3 ml-4">
         <span className="text-accent font-semibold text-sm tracking-wide">

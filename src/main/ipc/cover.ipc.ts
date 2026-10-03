@@ -9,8 +9,13 @@ import { generateThumbnail } from '../services/thumbnailService'
 import { getCoversDir } from '../utils/paths'
 import { updateGame } from '../services/library.db'
 import type { VndbSearchResult } from '../../shared/types'
+import { getWorldMetadata } from '../services/worldMetadata'
 
 export function registerCoverHandlers(): void {
+  ipcMain.handle(IPC_CHANNELS.GET_WORLD_METADATA, (_event, gameId: string, force = false) => {
+    if (typeof gameId !== 'string' || typeof force !== 'boolean') throw new Error('Invalid world request')
+    return getWorldMetadata(gameId, force)
+  })
   ipcMain.handle(IPC_CHANNELS.FIND_LOCAL_COVERS, (_event, gameDir: string): string[] => {
     return findLocalCovers(gameDir)
   })

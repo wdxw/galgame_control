@@ -32,7 +32,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }:
 
       {/* Panel */}
       <div
-        className={`relative w-full ${maxWidth} overflow-hidden rounded-xl border border-surface-100/25
+        className={`modal-panel relative w-full ${maxWidth} overflow-hidden rounded-xl border border-surface-100/25
                      bg-surface-200/95 shadow-2xl backdrop-blur-xl animate-slide-up`}
       >
         {title && (

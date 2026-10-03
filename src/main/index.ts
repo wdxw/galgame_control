@@ -2,6 +2,8 @@ import { app, BrowserWindow, shell, protocol } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { initDatabase } from './services/library.db'
+import { initWorldTables } from './services/world.db'
+import { initWorldSchema } from './services/worldAnalysis'
 import { registerAllHandlers } from './ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -19,7 +21,9 @@ function createWindow(): void {
       preload: path.join(__dirname, '../preload/preload.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // The app owns music playback even while its window is minimized.
+      backgroundThrottling: false
     },
     icon: path.join(__dirname, '../../resources/icon.png'),
     show: false
@@ -30,7 +34,8 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    // The music player is a remote frame; only web links may leave the app.
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
 
@@ -51,7 +56,16 @@ function getMimeType(filePath: string): string {
     '.gif': 'image/gif',
     '.bmp': 'image/bmp',
     '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon'
+    '.ico': 'image/x-icon',
+    '.aac': 'audio/aac',
+    '.flac': 'audio/flac',
+    '.m4a': 'audio/mp4',
+    '.mp3': 'audio/mpeg',
+    '.oga': 'audio/ogg',
+    '.ogg': 'audio/ogg',
+    '.opus': 'audio/ogg',
+    '.wav': 'audio/wav',
+    '.webm': 'audio/webm'
   }
   return mimeTypes[ext] || 'image/png'
 }
@@ -120,6 +134,8 @@ app.whenReady().then(() => {
   registerLocalFileProtocol()
 
   initDatabase()
+  initWorldTables()
+  initWorldSchema()
   registerAllHandlers()
   createWindow()
 

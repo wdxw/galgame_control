@@ -3,7 +3,7 @@ import { X, Play, Star, Clock, Calendar, Monitor, Image, Search, FolderOpen } fr
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../i18n/useTranslation'
-import type { TranslationKey } from '../../i18n/translations'
+import { GameRatings } from './GameRatings'
 import type { Game, VndbSearchResult } from '../../../shared/types'
 import { toLocalFileUrl } from '../../utils/media'
 
@@ -21,8 +21,6 @@ export function GameDetailPanel() {
   const [vndbResults, setVndbResults] = useState<VndbSearchResult[]>([])
   const [vndbSearching, setVndbSearching] = useState(false)
   const [vndbDownloading, setVndbDownloading] = useState<string | null>(null)
-  const [vndbRating, setVndbRating] = useState<{ rating: number; voteCount: number | null } | null>(null)
-  const [vndbRatingLoading, setVndbRatingLoading] = useState(false)
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -36,46 +34,6 @@ export function GameDetailPanel() {
       setVndbQuery('')
     } else {
       setGame(null)
-    }
-  }, [selectedGameId, games])
-
-  useEffect(() => {
-    if (!selectedGameId) {
-      setVndbRating(null)
-      setVndbRatingLoading(false)
-      return
-    }
-
-    const selectedGame = games.find(g => g.id === selectedGameId)
-    if (!selectedGame) return
-
-    let cancelled = false
-    setVndbRating(null)
-    setVndbRatingLoading(true)
-
-    const loadRating = async () => {
-      try {
-        const settings = await window.api.getSettings()
-        if (!settings.vndbEnabled) return
-
-        const results = await window.api.searchVndb(selectedGame.title)
-        const matched = findVndbMatch(selectedGame, results)
-        if (!cancelled && matched?.rating != null) {
-          setVndbRating({
-            rating: matched.rating,
-            voteCount: matched.voteCount
-          })
-        }
-      } catch {
-        // Rating is supplementary; keep the detail panel usable when VNDB is unavailable.
-      } finally {
-        if (!cancelled) setVndbRatingLoading(false)
-      }
-    }
-
-    void loadRating()
-    return () => {
-      cancelled = true
     }
   }, [selectedGameId, games])
 
@@ -158,21 +116,23 @@ export function GameDetailPanel() {
   }
 
   const handleVndbDownload = async (result: VndbSearchResult) => {
-    if (!result.imageUrl) return
+
     setVndbDownloading(result.id)
     try {
-      const newCoverPath = await window.api.downloadVndbCover(game.id, result.imageUrl)
+      const newCoverPath = result.imageUrl
+        ? await window.api.downloadVndbCover(game.id, result.imageUrl).catch(() => null)
+        : null
       await updateGame(game.id, {
-        coverPath: newCoverPath,
-        coverSource: 'vndb',
+        ...(newCoverPath ? { coverPath: newCoverPath, coverSource: 'vndb' as const } : {}),
         vndbId: result.id,
+        worldTags: result.tags,
         title: result.title || game.title,
         originalTitle: result.originalTitle || game.originalTitle,
         description: result.description || game.description,
         developer: result.developer || game.developer,
         releaseDate: result.releaseDate || game.releaseDate
       })
-      addToast(t('cover.coverUpdated'), 'success')
+      addToast('已关联 VNDB，游戏世界已创建', 'success')
       setImgError(false)
       setShowCoverMenu(false)
       fetchGames()
@@ -185,33 +145,42 @@ export function GameDetailPanel() {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Full-window cover, independent of the scrolling detail panel. */}
       <div
-        className="fixed inset-0 z-30 bg-surface-400/35 backdrop-blur-[1px]"
+        className="fixed inset-0 z-30 overflow-hidden bg-surface-300"
         onClick={closeDetailPanel}
-      />
+        aria-hidden="true"
+      >
+        {coverSrc && (
+          <img
+            key={coverSrc}
+            src={coverSrc}
+            alt=""
+            className="detail-cover-backdrop pointer-events-none absolute -inset-6 h-[calc(100%+3rem)] w-[calc(100%+3rem)] object-cover"
+            onError={() => setImgError(true)}
+          />
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-surface-200/60" />
+      </div>
+
+      {/* The clear cover fits the unobstructed space without enlargement or cropping. */}
+      {coverSrc && (
+        <div className="detail-cover-stage pointer-events-none fixed left-0 top-10 bottom-0 z-30">
+          <img
+            key={coverSrc}
+            src={coverSrc}
+            alt={game.title}
+            className="detail-cover-image h-full w-full object-scale-down drop-shadow-2xl animate-fade-in"
+            onError={() => setImgError(true)}
+          />
+        </div>
+      )}
 
       {/* Panel */}
-      <aside className="fixed right-0 top-10 bottom-0 z-40 w-[min(440px,100vw)]
-                         overflow-y-auto border-l border-surface-100/25 bg-surface-200/[0.92]
+      <aside className="detail-panel fixed right-0 top-10 bottom-0 z-40 w-[min(440px,100vw)]
+                         overflow-y-auto border-l border-surface-100/25 bg-surface-200/80
                          shadow-2xl backdrop-blur-xl animate-slide-up">
         <div className="relative min-h-full">
-          {/* Cover-derived ambient background */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-            {coverSrc && (
-              <img
-                key={coverSrc}
-                src={coverSrc}
-                alt=""
-                className="detail-cover-backdrop absolute -inset-8 h-[calc(100%+4rem)] w-[calc(100%+4rem)]
-                           object-cover"
-                onError={() => setImgError(true)}
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-b from-surface-200/50 via-surface-200/76 to-surface-200/94" />
-            <div className="absolute inset-0 bg-surface-200/16" />
-          </div>
-
           <div className="relative z-10 min-h-full">
             {/* Close button */}
             <button
@@ -233,7 +202,7 @@ export function GameDetailPanel() {
                   key={coverSrc}
                   src={coverSrc}
                   alt={game.title}
-                  className="relative z-10 max-h-[320px] w-full object-contain drop-shadow-2xl
+                  className="detail-cover-preview relative z-10 max-h-[320px] max-w-full object-scale-down drop-shadow-2xl
                              animate-fade-in"
                   onError={() => setImgError(true)}
                 />
@@ -307,7 +276,7 @@ export function GameDetailPanel() {
                     <button
                       key={result.id}
                       onClick={() => handleVndbDownload(result)}
-                      disabled={!result.imageUrl || vndbDownloading !== null}
+                      disabled={vndbDownloading !== null}
                       className="flex w-full items-center gap-2 rounded-lg border border-surface-100/20
                                  bg-surface-100/[0.55] px-3 py-2 text-left text-sm transition-colors
                                  hover:bg-white/10 disabled:opacity-50"
@@ -437,7 +406,7 @@ export function GameDetailPanel() {
                   {game.releaseDate || t('detail.unknown')}
                 </span>
               </div>
-              <VndbRating rating={vndbRating} loading={vndbRatingLoading} t={t} />
+              <GameRatings key={`${game.id}:${game.vndbId || ''}`} game={game} onFindVndb={() => { setShowCoverMenu(true); setVndbQuery(game.title) }} />
             </div>
           )}
 
@@ -554,71 +523,4 @@ function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string
       <p className="text-sm text-white/80">{value}</p>
     </div>
   )
-}
-
-function VndbRating({
-  rating,
-  loading,
-  t
-}: {
-  rating: { rating: number; voteCount: number | null } | null
-  loading: boolean
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string
-}) {
-  const score = rating ? rating.rating / 10 : 0
-  const filledStars = Math.round(score / 2)
-
-  return (
-    <div className="mt-4 flex items-center gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
-      <Star size={15} className="shrink-0 text-accent" fill="currentColor" />
-      <span className="text-xs font-medium text-accent">{t('detail.rating')}</span>
-      {loading ? (
-        <span className="ml-auto text-xs text-gray-500">{t('detail.ratingLoading')}</span>
-      ) : rating ? (
-        <>
-          <span
-            className="ml-auto flex items-center gap-0.5 text-accent"
-            aria-label={`${score.toFixed(1)} / 10`}
-          >
-            {Array.from({ length: 5 }, (_, index) => (
-              <Star
-                key={index}
-                size={13}
-                fill={index < filledStars ? 'currentColor' : 'none'}
-                className={index < filledStars ? 'text-accent' : 'text-accent/35'}
-              />
-            ))}
-          </span>
-          <strong className="text-sm text-accent">{score.toFixed(1)}</strong>
-          {rating.voteCount !== null && (
-            <span className="text-xs text-gray-500">
-              {t('detail.votes', { n: rating.voteCount.toLocaleString() })}
-            </span>
-          )}
-        </>
-      ) : (
-        <span className="ml-auto text-xs text-gray-500">{t('detail.ratingUnavailable')}</span>
-      )}
-    </div>
-  )
-}
-
-function findVndbMatch(game: Game, results: VndbSearchResult[]): VndbSearchResult | null {
-  if (results.length === 0) return null
-  if (game.vndbId) {
-    const linked = results.find(result => result.id === game.vndbId)
-    if (linked) return linked
-  }
-
-  const normalize = (value: string) =>
-    value.toLocaleLowerCase().replace(/[\s\-_:：，,。.!！?？'"“”‘’()[\]{}]/g, '')
-  const target = normalize(game.title)
-  const exact = results.find(result => {
-    const names = [result.title, result.originalTitle, ...result.aliases].filter(
-      (name): name is string => Boolean(name)
-    )
-    return names.some(name => normalize(name) === target)
-  })
-
-  return exact || results[0]
 }
