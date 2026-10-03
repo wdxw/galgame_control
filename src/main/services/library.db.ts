@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 import { getDbPath } from '../utils/paths'
-import type { Game } from '../../shared/types'
+import type { Game, ManualEgsRatingRecord } from '../../shared/types'
 
 let db: Database.Database | null = null
 
@@ -31,6 +31,7 @@ export function initDatabase(): void {
       cover_source    TEXT NOT NULL DEFAULT 'none'
                       CHECK(cover_source IN ('local','vndb','manual','none')),
       vndb_id         TEXT,
+      bangumi_id      INTEGER,
       developer       TEXT,
       description     TEXT,
       release_date    TEXT,
@@ -75,11 +76,38 @@ export function initDatabase(): void {
     }
     database.prepare('UPDATE schema_version SET version = 2 WHERE version = 1').run()
   }
+  const columns = database.prepare('PRAGMA table_info(games)').all() as { name: string }[]
+  database.transaction(() => {
+    if (!columns.some(column => column.name === 'world_tags')) {
+      database.exec("ALTER TABLE games ADD COLUMN world_tags TEXT NOT NULL DEFAULT '[]'")
+    }
+    if (!columns.some(column => column.name === 'bangumi_id')) {
+      database.exec('ALTER TABLE games ADD COLUMN bangumi_id INTEGER')
+    }
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS manual_ratings (
+        game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL CHECK(provider = 'erogamescape'),
+        external_id TEXT NOT NULL,
+        site TEXT NOT NULL CHECK(site IN ('koko', 'official', 'legacy')),
+        score REAL CHECK(score IS NULL OR (score >= 0 AND score <= 100)),
+        vote_count INTEGER CHECK(vote_count IS NULL OR (vote_count >= 0 AND typeof(vote_count) = 'integer')),
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(game_id, provider)
+      );
+    `)
+    database.prepare('UPDATE schema_version SET version = 5 WHERE version < 5').run()
+  })()
 }
 
 // ---- Game CRUD ----
 
 function rowToGame(row: Record<string, unknown>): Game {
+  let worldTags: string[] = []
+  try {
+    const parsed = JSON.parse(String(row.world_tags || '[]'))
+    if (Array.isArray(parsed)) worldTags = parsed.filter((tag): tag is string => typeof tag === 'string')
+  } catch { /* Ignore legacy or corrupt metadata. */ }
   return {
     id: row.id as string,
     title: row.title as string,
@@ -89,6 +117,8 @@ function rowToGame(row: Record<string, unknown>): Game {
     coverPath: (row.cover_path as string) || null,
     coverSource: (row.cover_source as Game['coverSource']) || 'none',
     vndbId: (row.vndb_id as string) || null,
+    worldTags,
+    bangumiId: (row.bangumi_id as number) || null,
     developer: (row.developer as string) || null,
     description: (row.description as string) || null,
     releaseDate: (row.release_date as string) || null,
@@ -127,10 +157,10 @@ export function addGame(game: Game): boolean {
 
   database.prepare(`
     INSERT INTO games (id, title, original_title, exe_path, game_dir,
-      cover_path, cover_source, vndb_id, developer, description, release_date,
+      cover_path, cover_source, vndb_id, world_tags, bangumi_id, developer, description, release_date,
       play_time, last_played, date_added, is_favorite, notes, exe_args)
     VALUES (@id, @title, @originalTitle, @exePath, @gameDir,
-      @coverPath, @coverSource, @vndbId, @developer, @description, @releaseDate,
+      @coverPath, @coverSource, @vndbId, @worldTags, @bangumiId, @developer, @description, @releaseDate,
       @playTime, @lastPlayed, @dateAdded, @isFavorite, @notes, @exeArgs)
   `).run({
     id: game.id,
@@ -141,6 +171,8 @@ export function addGame(game: Game): boolean {
     coverPath: game.coverPath,
     coverSource: game.coverSource,
     vndbId: game.vndbId,
+    worldTags: JSON.stringify(game.worldTags || []),
+    bangumiId: game.bangumiId ?? null,
     developer: game.developer,
     description: game.description,
     releaseDate: game.releaseDate,
@@ -155,6 +187,10 @@ export function addGame(game: Game): boolean {
 }
 
 export function updateGame(id: string, fields: Partial<Game>): void {
+  const identityChanged = fields.vndbId !== undefined && fields.vndbId !== getGameById(id)?.vndbId
+  if (identityChanged) {
+    fields = { ...fields, bangumiId: null }
+  }
   const database = getDb()
 
   // Map camelCase to snake_case for SQL
@@ -166,6 +202,8 @@ export function updateGame(id: string, fields: Partial<Game>): void {
     coverPath: 'cover_path',
     coverSource: 'cover_source',
     vndbId: 'vndb_id',
+    worldTags: 'world_tags',
+    bangumiId: 'bangumi_id',
     developer: 'developer',
     description: 'description',
     releaseDate: 'release_date',
@@ -184,16 +222,19 @@ export function updateGame(id: string, fields: Partial<Game>): void {
     const colName = fieldMap[key]
     if (colName) {
       setClauses.push(`${colName} = @${key}`)
-      params[key] = key === 'isFavorite' ? (value ? 1 : 0) : value
+      params[key] = key === 'isFavorite' ? (value ? 1 : 0) : key === 'worldTags' ? JSON.stringify(value || []) : value
     }
   }
 
   if (setClauses.length === 0) return
 
   params['id'] = id
-  database.prepare(
-    `UPDATE games SET ${setClauses.join(', ')} WHERE id = @id`
-  ).run(params)
+  database.transaction(() => {
+    database.prepare(
+      `UPDATE games SET ${setClauses.join(', ')} WHERE id = @id`
+    ).run(params)
+    if (identityChanged) database.prepare('DELETE FROM manual_ratings WHERE game_id = ?').run(id)
+  })()
 }
 
 export function deleteGame(id: string): void {
@@ -259,4 +300,40 @@ export function closeDatabase(): void {
     db.close()
     db = null
   }
+}
+
+// Compare the source identity again after asynchronous network requests.
+export function linkBangumi(gameId: string, vndbId: string | null, subjectId: number, automatic: boolean): boolean {
+  const condition = automatic ? ' AND bangumi_id IS NULL' : ''
+  return getDb().prepare(
+    'UPDATE games SET bangumi_id = ? WHERE id = ? AND vndb_id IS ?' + condition
+  ).run(subjectId, gameId, vndbId).changes === 1
+}
+
+export function getManualEgsRating(gameId: string): ManualEgsRatingRecord | null {
+  return (getDb().prepare(`
+    SELECT external_id AS externalId, site, score, vote_count AS voteCount, updated_at AS updatedAt
+    FROM manual_ratings WHERE game_id = ? AND provider = 'erogamescape'
+  `).get(gameId) as ManualEgsRatingRecord | undefined) || null
+}
+
+export function saveManualEgsRating(gameId: string, expectedVndbId: string | null, record: ManualEgsRatingRecord): void {
+  getDb().transaction(() => {
+    const game = getGameById(gameId)
+    if (!game || game.vndbId !== expectedVndbId) throw new Error('Game identity changed')
+    getDb().prepare(`
+      INSERT INTO manual_ratings(game_id, provider, external_id, site, score, vote_count, updated_at)
+      VALUES(@gameId, 'erogamescape', @externalId, @site, @score, @voteCount, @updatedAt)
+      ON CONFLICT(game_id, provider) DO UPDATE SET external_id = excluded.external_id,
+        site = excluded.site, score = excluded.score, vote_count = excluded.vote_count, updated_at = excluded.updated_at
+    `).run({ gameId, ...record })
+  })()
+}
+
+export function clearManualEgsRating(gameId: string, expectedVndbId: string | null): void {
+  getDb().transaction(() => {
+    const game = getGameById(gameId)
+    if (!game || game.vndbId !== expectedVndbId) throw new Error('Game identity changed')
+    getDb().prepare("DELETE FROM manual_ratings WHERE game_id = ? AND provider = 'erogamescape'").run(gameId)
+  })()
 }

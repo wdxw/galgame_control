@@ -1,4 +1,5 @@
 import https from 'https'
+import { requestRatingJson } from './ratingNetwork'
 import path from 'path'
 import fs from 'fs'
 import { getCacheDir } from '../utils/paths'
@@ -6,9 +7,6 @@ import type { VndbSearchResult } from '../../shared/types'
 
 const VNDB_API = 'https://api.vndb.org/kana/vn'
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
-const REQUEST_INTERVAL = 1100 // 1.1 seconds between requests (rate limit safety)
-
-let lastRequestTime = 0
 
 interface VndbCacheEntry {
   results: VndbSearchResult[]
@@ -37,51 +35,8 @@ function saveCache(cache: Record<string, VndbCacheEntry>): void {
   }
 }
 
-function httpPost(url: string, body: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url)
-    const options = {
-      hostname: urlObj.hostname,
-      port: urlObj.port || 443,
-      path: urlObj.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-        'User-Agent': 'GalController/1.0'
-      }
-    }
-
-    const req = https.request(options, (res) => {
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        if (res.statusCode === 429) {
-          reject(new Error('VNDB rate limit exceeded. Please try again later.'))
-          return
-        }
-        if (res.statusCode !== 200) {
-          reject(new Error(`VNDB API returned status ${res.statusCode}`))
-          return
-        }
-        resolve(data)
-      })
-    })
-
-    req.on('error', reject)
-    req.write(body)
-    req.end()
-  })
-}
-
 async function rateLimitedRequest(body: string): Promise<string> {
-  const now = Date.now()
-  const timeSinceLast = now - lastRequestTime
-  if (timeSinceLast < REQUEST_INTERVAL) {
-    await new Promise(r => setTimeout(r, REQUEST_INTERVAL - timeSinceLast))
-  }
-  lastRequestTime = Date.now()
-  return httpPost(VNDB_API, body)
+  return JSON.stringify(await requestRatingJson(VNDB_API, JSON.parse(body)))
 }
 
 /**
@@ -92,7 +47,7 @@ export async function searchVndb(title: string): Promise<VndbSearchResult[]> {
   // Check cache first
   const cache = getCache()
   // Refresh cached search results created before rating support was added.
-  const cacheKey = `v2:${title.toLowerCase().trim()}`
+  const cacheKey = `v3:${title.toLowerCase().trim()}`
   const cached = cache[cacheKey]
   if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
     return cached.results
@@ -101,7 +56,7 @@ export async function searchVndb(title: string): Promise<VndbSearchResult[]> {
   try {
     const body = JSON.stringify({
       filters: ['search', '=', title],
-      fields: 'title, alttitle, image.url, image.sexual, image.violence, released, developers.name, aliases, description, rating, votecount',
+      fields: 'title, alttitle, image.url, image.sexual, image.violence, released, developers.name, aliases, description, rating, votecount, tags.name, tags.rating, tags.spoiler',
       results: 10,
       sort: 'searchrank'
     })
@@ -119,6 +74,11 @@ export async function searchVndb(title: string): Promise<VndbSearchResult[]> {
       developer: (item.developers as Array<Record<string, string>>)?.[0]?.name || null,
       description: item.description as string || null,
       aliases: (item.aliases as string[]) || [],
+      tags: ((item.tags as Array<{ name: string; rating: number; spoiler: number }> | undefined) || [])
+        .filter(tag => tag.spoiler === 0 && tag.rating >= 1)
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 24)
+        .map(tag => tag.name),
       rating: typeof item.rating === 'number' ? item.rating : null,
       voteCount: typeof item.votecount === 'number' ? item.votecount : null
     }))

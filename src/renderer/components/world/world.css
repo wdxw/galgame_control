@@ -1,0 +1,719 @@
+/* The world view keeps its own light, rounded palette so the 3D island reads as
+   a place rather than as another panel of the library. */
+
+.world-shell {
+  --world-panel: rgba(255, 253, 247, 0.94);
+  --world-panel-solid: #fffdf7;
+  --world-ink: #4b4137;
+  --world-ink-soft: #8d8072;
+  --world-line: rgba(122, 104, 86, 0.18);
+  --world-accent: #67bf9c;
+  --world-accent-soft: rgba(103, 191, 156, 0.16);
+  --world-danger: #e08a8a;
+  --world-shadow: 0 12px 30px rgba(92, 76, 58, 0.16);
+  --world-radius: 22px;
+
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  color: var(--world-ink);
+  font-size: 13px;
+  user-select: none;
+}
+
+.world-shell[data-world-biome='mystery'],
+.world-shell[data-world-biome='scifi'] {
+  --world-panel: rgba(40, 44, 62, 0.9);
+  --world-panel-solid: #2b3046;
+  --world-ink: #f2eeff;
+  --world-ink-soft: #b6b1c9;
+  --world-line: rgba(226, 222, 255, 0.16);
+  --world-accent: #8fe0d6;
+  --world-accent-soft: rgba(143, 224, 214, 0.18);
+  --world-shadow: 0 12px 30px rgba(10, 12, 24, 0.4);
+}
+
+.world-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.world-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+.world-canvas:active { cursor: grabbing; }
+.world-shell.is-building .world-canvas { cursor: crosshair; }
+
+.world-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, rgba(255, 255, 255, 0) 65%, rgba(72, 58, 44, 0.06) 100%);
+}
+
+/* ---- buttons -------------------------------------------------------------- */
+
+.world-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--world-line);
+  border-radius: 999px;
+  background: var(--world-panel);
+  color: var(--world-ink);
+  font-size: 12.5px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.world-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(92, 76, 58, 0.14); }
+.world-btn:active:not(:disabled) { transform: translateY(0); }
+.world-btn:disabled { opacity: 0.45; cursor: default; }
+.world-btn.is-active { background: var(--world-accent); border-color: transparent; color: #14342a; }
+.world-btn-ghost { background: transparent; }
+.world-topbar-actions .world-btn-ghost { background: var(--world-panel); }
+.world-bound-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 210px;
+  padding: 7px 12px;
+  border: 1px solid var(--world-line);
+  border-radius: 16px 16px 16px 5px;
+  background: var(--world-panel);
+  color: var(--world-ink);
+  box-shadow: 0 3px 12px rgba(35, 53, 39, .14);
+  font-size: 11px;
+  cursor: pointer;
+}
+.world-bound-label:hover { background: var(--world-accent); }
+.world-btn-chip { padding: 6px 11px; font-size: 12px; }
+.world-danger { color: var(--world-danger); border-color: rgba(224, 138, 138, 0.4); }
+.world-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--world-ink-soft);
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.world-icon-btn:hover:not(:disabled) { background: var(--world-accent-soft); color: var(--world-ink); }
+.world-icon-btn:disabled { opacity: 0.4; cursor: default; }
+.world-icon-btn.world-danger { color: var(--world-danger); }
+.world-icon-btn.world-danger:hover:not(:disabled) { background: rgba(224, 138, 138, 0.16); }
+
+/* ---- top bar -------------------------------------------------------------- */
+
+.world-topbar {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.world-topbar > * { pointer-events: auto; }
+
+.world-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border-radius: var(--world-radius);
+  background: var(--world-panel);
+  box-shadow: var(--world-shadow);
+  backdrop-filter: blur(6px);
+  max-width: 46%;
+}
+
+.world-identity strong { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; }
+.world-identity small { color: var(--world-ink-soft); font-size: 11.5px; }
+.world-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--world-ink-soft);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+}
+
+.world-topbar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+/* ---- launch card ---------------------------------------------------------- */
+
+.world-launch-card {
+  position: absolute;
+  left: 16px;
+  bottom: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 12px;
+  border-radius: var(--world-radius);
+  background: var(--world-panel);
+  box-shadow: var(--world-shadow);
+  backdrop-filter: blur(6px);
+  max-width: 340px;
+}
+
+.world-mini-cover {
+  width: 40px;
+  height: 54px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.06);
+}
+.world-mini-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.world-mini-cover span {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: #4b4137;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.world-launch-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.world-launch-text strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.world-launch-text small { color: var(--world-ink-soft); font-size: 11px; }
+
+.world-launch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--world-accent);
+  color: #14342a;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+.world-launch:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
+.world-launch:disabled { opacity: 0.6; cursor: default; }
+
+/* ---- build tools ---------------------------------------------------------- */
+
+.world-build-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--world-line);
+  background: var(--world-panel-solid);
+}
+.world-build-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.world-place-hint {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(224, 122, 122, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(200, 90, 90, 0.45);
+  color: #a34a4a;
+  font-size: 11.5px;
+}
+
+.world-selection {
+  position: absolute;
+  left: 50%;
+  bottom: 46px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 999px;
+  background: var(--world-panel);
+  box-shadow: var(--world-shadow);
+}
+
+.world-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  /* The hint is a sentence per language and the English one runs about twice as
+     long, so it wraps in the middle of the stage instead of running off it. */
+  max-width: min(90%, 860px);
+  text-align: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--world-panel);
+  color: var(--world-ink);
+  font-size: 11.5px;
+  box-shadow: 0 2px 8px rgba(35, 53, 39, .08);
+  pointer-events: none;
+}
+.world-hint kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--world-line);
+  border-radius: 6px;
+  background: var(--world-panel);
+  font: inherit;
+  font-size: 10.5px;
+}
+
+/* ---- overlays ------------------------------------------------------------- */
+
+.world-loading,
+.world-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(252, 248, 240, 0.86);
+  backdrop-filter: blur(3px);
+}
+.world-fallback strong { font-size: 15px; }
+.world-fallback p { max-width: 340px; color: var(--world-ink-soft); font-size: 12px; line-height: 1.6; }
+
+.is-spinning { animation: world-spin 1s linear infinite; }
+@keyframes world-spin { to { transform: rotate(360deg); } }
+
+.world-resume {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: 1px solid var(--world-line);
+  border-radius: 999px;
+  background: var(--world-panel);
+  color: var(--world-ink);
+  font-size: 12.5px;
+  cursor: pointer;
+  box-shadow: var(--world-shadow);
+}
+
+.world-fade {
+  position: absolute;
+  inset: 0;
+  background: #fdf9f1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+.world-fade.is-on { opacity: 1; }
+
+/* ---- planet catalogue ----------------------------------------------------- */
+
+.world-catalog {
+  position: absolute;
+  top: 74px;
+  right: 16px;
+  width: 330px;
+  max-height: calc(100% - 150px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--world-radius);
+  background: var(--world-panel);
+  box-shadow: var(--world-shadow);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+.world-catalog header,
+.world-panel header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 10px 16px;
+  border-bottom: 1px solid var(--world-line);
+}
+.world-catalog header strong,
+.world-panel header strong { flex: 1; font-size: 13.5px; }
+.world-catalog header span,
+.world-panel header span { color: var(--world-ink-soft); font-size: 11.5px; }
+
+.world-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 12px;
+  padding: 7px 12px;
+  border: 1px solid var(--world-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--world-ink-soft);
+}
+.world-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--world-ink);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+.world-search button {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: var(--world-ink-soft);
+  cursor: pointer;
+}
+
+.world-planet-list { flex: 1; overflow-y: auto; padding: 0 10px 6px; }
+
+.world-planet {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease, transform 0.14s ease;
+}
+.world-planet:hover { background: var(--world-accent-soft); transform: translateX(2px); }
+.world-planet.is-current { background: var(--world-accent-soft); }
+
+.world-planet-orb {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.18);
+}
+
+.world-thumb {
+  width: 34px;
+  height: 46px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.06);
+}
+.world-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.world-thumb-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: #4b4137;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.world-planet-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.world-planet-text strong { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.world-planet-text small { color: var(--world-ink-soft); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.world-planet-empty { padding: 14px 8px; color: var(--world-ink-soft); font-size: 12px; line-height: 1.6; }
+
+.world-catalog footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--world-line);
+  color: var(--world-ink-soft);
+  font-size: 11.5px;
+}
+.world-catalog footer > button:not(.world-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--world-line);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.world-catalog footer > button:disabled { opacity: 0.35; cursor: default; }
+.world-catalog footer .world-btn { margin-left: auto; }
+
+/* ---- world feature panel -------------------------------------------------- */
+
+.world-panel {
+  position: absolute;
+  top: 74px;
+  right: 16px;
+  bottom: 16px;
+  width: 336px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--world-radius);
+  background: var(--world-panel);
+  box-shadow: var(--world-shadow);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+.world-panel-body { flex: 1; overflow-y: auto; padding: 12px 14px 16px; }
+.world-panel-body section { padding: 10px 0; border-bottom: 1px dashed var(--world-line); }
+.world-panel-body section:last-child { border-bottom: none; }
+.world-panel-body h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.world-panel-body h4 small { color: var(--world-ink-soft); font-weight: 400; }
+.world-panel-body > section > .world-btn { margin-top: 8px; }
+.world-panel-note { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--world-ink-soft); font-size: 11.5px; line-height: 1.6; }
+.world-panel-error { margin-top: 6px; color: var(--world-danger); font-size: 11.5px; }
+
+.world-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--world-accent-soft);
+  color: var(--world-ink);
+  font-size: 11px;
+}
+
+.world-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--world-line);
+  font-size: 10.5px;
+}
+.world-tag.is-ai { border-color: transparent; background: var(--world-accent); color: #14342a; }
+
+.world-evidence { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.world-evidence li {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--world-ink-soft);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.world-evidence svg { flex: none; margin-top: 3px; }
+
+.world-element-list { display: flex; flex-direction: column; gap: 4px; }
+.world-element {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.42);
+}
+.world-element > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.world-element strong { font-size: 12.5px; }
+.world-element small {
+  color: var(--world-ink-soft);
+  font-size: 11px;
+  /* A reason is written once per language and the English one is the longer of
+     the two, so it gets two lines before it is clipped. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.world-element.is-launch { background: var(--world-accent-soft); box-shadow: inset 0 0 0 1px var(--world-accent); }
+.world-element.is-removed { opacity: 0.55; }
+.world-element.is-pending { background: rgba(255, 236, 200, 0.5); }
+
+.world-picker { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.world-picker input {
+  padding: 7px 12px;
+  border: 1px solid var(--world-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--world-ink);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.world-picker h5 { margin-bottom: 5px; color: var(--world-ink-soft); font-size: 10.5px; letter-spacing: 0.1em; }
+.world-picker-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.world-picker-grid button {
+  padding: 5px 10px;
+  border: 1px solid var(--world-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--world-ink);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.world-picker-grid button:hover { background: var(--world-accent-soft); }
+
+.world-missing { display: flex; flex-wrap: wrap; gap: 5px; }
+.world-missing span {
+  padding: 4px 10px;
+  border: 1px dashed var(--world-line);
+  border-radius: 999px;
+  color: var(--world-ink-soft);
+  font-size: 11px;
+}
+
+.world-panel footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--world-line);
+  color: var(--world-ink-soft);
+  font-size: 11px;
+}
+
+/* ---- music window -------------------------------------------------------- */
+
+.world-music-window {
+  position: absolute;
+  top: 74px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--world-line);
+  border-radius: var(--world-radius);
+  background: var(--world-panel);
+  box-shadow: var(--world-shadow);
+  backdrop-filter: blur(9px);
+  overflow: hidden;
+}
+.world-music-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 10px 14px;
+  border-bottom: 1px solid var(--world-line);
+}
+.world-music-heading { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.world-music-heading > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.world-music-heading strong { font-size: 13.5px; }
+.world-music-heading small { color: var(--world-ink-soft); font-size: 10.5px; }
+.world-music-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--world-accent-soft);
+  color: var(--world-accent);
+}
+.world-music-actions { display: flex; align-items: center; gap: 2px; }
+.world-music-body { flex: 1; min-height: 90px; overflow-y: auto; padding: 8px 10px; }
+.world-music-filters { display: flex; gap: 4px; padding: 9px 12px 4px; flex-shrink: 0; }
+.world-music-filters button { flex: 1; border: 0; border-radius: 9px; padding: 6px 4px; background: transparent; color: var(--world-ink-soft); font-size: 11px; cursor: pointer; }
+.world-music-filters button.is-active { background: var(--world-accent-soft); color: var(--world-ink); font-weight: 600; }
+.world-music-search { display: flex; gap: 5px; margin: 4px 12px 2px; padding: 4px 6px 4px 9px; border: 1px solid var(--world-line); border-radius: 11px; background: rgba(255, 255, 255, .6); flex-shrink: 0; }
+.world-music-search:focus-within { border-color: var(--world-accent); }
+.world-music-search input { min-width: 0; flex: 1; width: 100%; border: 0; outline: none; background: transparent; color: var(--world-ink); font-size: 11.5px; }
+.world-music-search button { display: flex; align-items: center; justify-content: center; width: 25px; height: 25px; border: 0; border-radius: 7px; background: var(--world-accent-soft); color: var(--world-ink); cursor: pointer; }
+.world-music-search button:disabled { opacity: .45; cursor: default; }
+.world-music-network-note { margin-bottom: 9px; }
+.world-music-network-note .world-music-note { margin-bottom: 0; }
+.world-music-network-note .world-music-source { margin-left: 5px; }
+.world-music-album-tools { padding: 7px 2px 2px; }
+.world-music-album-tools .world-btn { font-size: 10.5px; padding: 5px 8px; }
+.world-music-album-tools .world-music-note { margin: 5px 1px 2px; font-size: 9.5px; }
+.world-music-note { margin: 3px 5px 8px; color: var(--world-ink-soft); font-size: 10.5px; line-height: 1.5; }
+.world-music-empty { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 18px 10px; color: var(--world-ink-soft); font-size: 11.5px; text-align: center; }
+.world-music-empty.compact { padding: 11px 8px; font-size: 10.5px; }
+.world-music-album { margin-bottom: 6px; border: 1px solid transparent; border-radius: 14px; background: rgba(255, 255, 255, .3); overflow: hidden; }
+.world-music-album.is-expanded { border-color: var(--world-line); background: rgba(255, 255, 255, .4); }
+.world-music-album-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 9px;
+  border: none;
+  background: transparent;
+  color: var(--world-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.world-music-album-row:hover { background: var(--world-accent-soft); }
+.world-music-cover { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: none; overflow: hidden; border-radius: 9px; background: var(--world-accent-soft); color: var(--world-accent); }
+.world-music-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.world-music-album-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.world-music-album-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.world-music-album-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--world-ink-soft); font-size: 10.5px; }
+.world-music-count { min-width: 18px; color: var(--world-ink-soft); font-size: 10.5px; text-align: right; }
+.world-music-tracklist { padding: 2px 7px 8px; border-top: 1px dashed var(--world-line); }
+.world-music-track { display: flex; align-items: center; gap: 6px; min-height: 31px; padding: 3px 2px; border-radius: 8px; }
+.world-music-track:hover, .world-music-track.is-current { background: var(--world-accent-soft); }
+.world-music-play { display: inline-flex; align-items: center; justify-content: center; width: 23px; height: 23px; flex: none; border: none; border-radius: 50%; background: transparent; color: var(--world-accent); cursor: pointer; }
+.world-music-play:hover:not(:disabled) { background: var(--world-accent); color: #14342a; }
+.world-music-play:disabled { color: var(--world-ink-soft); opacity: .42; cursor: default; }
+.world-music-number { width: 18px; flex: none; color: var(--world-ink-soft); font-size: 10px; text-align: right; }
+.world-music-track-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.world-music-track-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 500; }
+.world-music-track-title small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--world-ink-soft); font-size: 9.5px; }
+.world-music-duration { flex: none; color: var(--world-ink-soft); font-size: 9.5px; }
+.world-music-source { display: inline-flex; align-items: center; gap: 4px; margin: 5px 3px 0; color: var(--world-ink-soft); font-size: 10px; text-decoration: none; }
+.world-music-source:hover { color: var(--world-accent); }
+.world-music-player { display: flex; flex-direction: column; gap: 5px; padding: 8px 11px 10px; border-top: 1px solid var(--world-line); flex-shrink: 0; }
+.world-music-embed { border: 0; width: 100%; height: 90px; background: #fff; border-radius: 9px; }
+.world-music-embed.is-album { height: min(330px, 32vh); }
+.world-music-playback-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.world-music-playback-actions button, .world-music-playback-actions a { display: inline-flex; align-items: center; gap: 4px; padding: 3px; border: 0; background: transparent; color: var(--world-ink-soft); font-size: 10px; text-decoration: none; cursor: pointer; }
+.world-music-playback-actions button:hover, .world-music-playback-actions a:hover { color: var(--world-ink); }
+.world-music-player .world-music-note { margin: 0; font-size: 9.5px; }
+.world-music-now { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--world-ink); font-size: 10.5px; }
+.world-music-now span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.world-music-now small { color: var(--world-ink-soft); font-size: 9.5px; }
+.world-music-player audio { width: 100%; height: 29px; accent-color: var(--world-accent); }
+
+@media (max-width: 900px) {
+  .world-catalog, .world-panel { width: min(340px, calc(100% - 32px)); }
+  .world-music-window { width: min(360px, calc(100% - 32px)); }
+  .world-identity { max-width: 40%; }
+  .world-launch-card { max-width: calc(100% - 32px); }
+}

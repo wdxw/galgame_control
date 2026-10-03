@@ -5,6 +5,7 @@ directories:
   output: build
 files:
   - '!**/.vscode/*'
+  - '!build/*'
   - '!src/*'
   - '!electron.vite.config.*'
   - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'

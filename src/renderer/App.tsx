@@ -10,12 +10,15 @@ import { ImportWizard } from './components/import/ImportWizard'
 import { GameDetailPanel } from './components/details/GameDetailPanel'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { Toast } from './components/common/Toast'
+import { WorldView } from './components/world/WorldView'
+import { BackgroundMusicPlayer, MusicPlaybackProvider } from './components/music/MusicPlayback'
 
 export default function App() {
   const { fetchGames } = useGameStore()
   const { toasts } = useUIStore()
   const { phase } = useScanStore()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [worldOpen, setWorldOpen] = useState(false)
 
   const applyTheme = (theme: string) => {
     document.body.setAttribute('data-theme', theme)
@@ -44,26 +47,34 @@ export default function App() {
     if (settings.theme) {
       applyTheme(settings.theme)
     }
+    // The world view reads the quality tier it should draw at, and it outlives the
+    // settings panel — without this it would keep the tier it opened with.
+    window.dispatchEvent(new CustomEvent('gal:settings', { detail: settings }))
     setSettingsOpen(false)
   }
 
   return (
-    <AppShell
-      titleBar={<TitleBar />}
-      sidebar={<Sidebar onOpenSettings={() => setSettingsOpen(true)} />}
-    >
-      {phase !== 'idle' && phase !== 'complete' ? (
-        <ImportWizard />
-      ) : (
-        <GameGrid />
-      )}
-      <GameDetailPanel />
-      <SettingsPanel open={settingsOpen} onClose={handleSettingsClose} />
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map(toast => (
-          <Toast key={toast.id} {...toast} />
-        ))}
-      </div>
-    </AppShell>
+    <MusicPlaybackProvider>
+      <AppShell
+        titleBar={<TitleBar />}
+        footer={<BackgroundMusicPlayer />}
+        sidebar={<Sidebar onOpenSettings={() => setSettingsOpen(true)} worldOpen={worldOpen} onOpenWorld={() => setWorldOpen(true)} onOpenLibrary={() => setWorldOpen(false)} />}
+      >
+        {phase !== 'idle' && phase !== 'complete' ? (
+          <ImportWizard />
+        ) : worldOpen ? (
+          <WorldView />
+        ) : (
+          <GameGrid />
+        )}
+        <GameDetailPanel />
+        <SettingsPanel open={settingsOpen} onClose={handleSettingsClose} />
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+          {toasts.map(toast => (
+            <Toast key={toast.id} {...toast} />
+          ))}
+        </div>
+      </AppShell>
+    </MusicPlaybackProvider>
   )
 }

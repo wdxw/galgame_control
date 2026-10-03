@@ -60,7 +60,7 @@ export function GameCard({ game }: GameCardProps) {
   return (
     <>
       <div
-        className="group relative cursor-pointer overflow-hidden rounded-lg
+        className="game-card group relative cursor-pointer overflow-hidden rounded-lg
                    border border-surface-100/20 bg-surface-200/80
                    transition-[transform,border-color,box-shadow] duration-200
                    hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-black/20"
@@ -73,7 +73,7 @@ export function GameCard({ game }: GameCardProps) {
             <img
               src={getCoverSrc()}
               alt={game.title}
-              className="h-full w-full object-contain p-1 transition-transform duration-300 group-hover:scale-[1.03]"
+              className="h-full w-full object-contain p-1"
               onError={() => setImgError(true)}
             />
           ) : (

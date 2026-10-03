@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FolderOpen, Star, Clock, ChevronLeft, ChevronRight, Library, Settings } from 'lucide-react'
+import { FolderOpen, Star, Clock, ChevronLeft, ChevronRight, Library, Settings, Orbit } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useScanStore } from '../../store/scanStore'
@@ -8,9 +8,12 @@ import { SearchBar } from './SearchBar'
 
 interface SidebarProps {
   onOpenSettings?: () => void
+  worldOpen: boolean
+  onOpenWorld: () => void
+  onOpenLibrary: () => void
 }
 
-export function Sidebar({ onOpenSettings }: SidebarProps) {
+export function Sidebar({ onOpenSettings, worldOpen, onOpenWorld, onOpenLibrary }: SidebarProps) {
   const { games, filter, setFilter } = useGameStore()
   const { sidebarCollapsed, toggleSidebar } = useUIStore()
   const [importing, setImporting] = useState(false)
@@ -42,13 +45,17 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
 
   if (sidebarCollapsed) {
     return (
-      <aside className="w-16 bg-surface-200/[0.92] border-r border-surface-100/20 backdrop-blur-xl flex flex-col items-center py-4 gap-4 shrink-0">
+      <aside className="app-sidebar w-16 bg-surface-200/[0.92] border-r border-surface-100/20 backdrop-blur-xl flex flex-col items-center py-4 gap-4 shrink-0">
         <button
           onClick={toggleSidebar}
           className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
           title={t('sidebar.expand')}
         >
           <ChevronRight size={18} />
+        </button>
+        <button onClick={onOpenWorld} title={t('sidebar.world')}
+          className={'p-2 rounded-lg transition-colors ' + (worldOpen ? 'bg-accent/20 text-accent' : 'text-gray-400 hover:text-white hover:bg-white/10')}>
+          <Orbit size={18} />
         </button>
         <button
           onClick={handleImport}
@@ -63,7 +70,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   }
 
   return (
-    <aside className="w-60 bg-surface-200/[0.92] border-r border-surface-100/20 backdrop-blur-xl flex flex-col shrink-0 overflow-hidden">
+    <aside className="app-sidebar w-60 bg-surface-200/[0.92] border-r border-surface-100/20 backdrop-blur-xl flex flex-col shrink-0 overflow-hidden">
       {/* Header */}
       <div className="px-4 pb-3 pt-5 flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -85,26 +92,31 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3.5 space-y-1">
+        <button onClick={onOpenWorld}
+          className={'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ' + (worldOpen ? 'bg-accent/15 text-accent font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5')}>
+          <Orbit size={18} /><span className="flex-1 text-left">{t('sidebar.world')}</span>
+          {games.filter(g => g.vndbId).length > 0 && <span className="text-xs">{games.filter(g => g.vndbId).length}</span>}
+        </button>
         <NavItem
           icon={<Library size={18} />}
           label={t('sidebar.allGames')}
           count={games.length}
-          active={filter === 'all'}
-          onClick={() => setFilter('all')}
+          active={!worldOpen && filter === 'all'}
+          onClick={() => { setFilter('all'); onOpenLibrary() }}
         />
         <NavItem
           icon={<Clock size={18} />}
           label={t('sidebar.recent')}
           count={recent}
-          active={filter === 'recent'}
-          onClick={() => setFilter('recent')}
+          active={!worldOpen && filter === 'recent'}
+          onClick={() => { setFilter('recent'); onOpenLibrary() }}
         />
         <NavItem
           icon={<Star size={18} />}
           label={t('sidebar.favorites')}
           count={favorites}
-          active={filter === 'favorites'}
-          onClick={() => setFilter('favorites')}
+          active={!worldOpen && filter === 'favorites'}
+          onClick={() => { setFilter('favorites'); onOpenLibrary() }}
         />
       </nav>
 
@@ -122,6 +134,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
 
       {/* Import button */}
       <div className="p-3.5 border-t border-surface-100/20">
+
         <button
           onClick={handleImport}
           disabled={importing}
